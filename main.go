@@ -33,7 +33,7 @@ func initMySQL() (err error) {
 func main() {
 
 	//获取当前时间
-	nowDate := time.Now().Format("2006-01-02T15:04:05Z")
+	nowDate := time.Now().Format("2006-01-02T00:00:00Z")
 
 	//连接数据库
 	err := initMySQL()
@@ -66,7 +66,7 @@ func main() {
 			nowDate = todo.Date.Format("2006-01-02T15:04:05Z")
 
 			//去掉时间偏移
-			todo.Date = todo.Date.Add(-8 * time.Hour)
+			// todo.Date = todo.Date.Add(-8 * time.Hour)
 			//存入数据库//返回响应
 			err = DB.Debug().Create(&todo).Error
 			if err != nil {
@@ -84,6 +84,10 @@ func main() {
 			startTime, _ := time.Parse("2006-01-02", selectedDate)
 			endTime, _ := time.Parse("2006-01-02", selectedDate)
 			endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 0, endTime.Location())
+			startTimestring:=startTime.Format("2006-01-02 15:04:05+08:00")
+			startTime,_=time.Parse("2006-01-02 15:04:05+08:00", startTimestring)
+			endTimestring:=endTime.Format("2006-01-02 15:04:05+08:00")
+			endTime,_=time.Parse("2006-01-02 15:04:05+08:00", endTimestring)
 			//更新当前日期
 			nowDate = startTime.Format("2006-01-02T15:04:05Z")
 			//查询表里的所有数据
