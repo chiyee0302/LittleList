@@ -14,6 +14,12 @@ var (
 	DB *gorm.DB
 )
 
+type User struct {
+	ID       int    `json:"id"`
+	Name     string `json:"Name"`
+	Password string `json:"Password"`
+}
+
 type Todo struct {
 	ID     int       `json:"id"`
 	Info   string    `json:"info"`
@@ -43,6 +49,7 @@ func main() {
 	defer DB.Close()
 	//模型绑定
 	DB.AutoMigrate(&Todo{})
+	DB.AutoMigrate(&User{})
 
 	r := gin.Default()
 	r.Static("/assets", "assets")
@@ -53,6 +60,31 @@ func main() {
 		ctx.HTML(http.StatusOK, "index.html", nil)
 	})
 
+	//用户表管理
+	//创建管理员用户
+	var admin User
+	admin.Name = "admin"
+	admin.Password = "admin"
+	DB.Create(&admin)
+	//创建用户
+	r.POST("/signup/check", func(c *gin.Context) {
+		var user User
+		c.BindJSON(&user)
+		DB.Debug().Create(&user)
+	})
+	//登录
+	r.POST("/user", func(c *gin.Context) {
+		var user User
+		c.BindJSON(&user)
+		result := DB.Debug().Find(&user,"`name`=? AND `password`=?", user.Name, user.Password)
+		if result.RowsAffected == 0 {
+			// 登录失败
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"success": "success"})
+		}
+	})
+	//待办事项的增删改查
 	editGroup := r.Group("edit")
 	{
 
@@ -84,10 +116,10 @@ func main() {
 			startTime, _ := time.Parse("2006-01-02", selectedDate)
 			endTime, _ := time.Parse("2006-01-02", selectedDate)
 			endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 0, endTime.Location())
-			startTimestring:=startTime.Format("2006-01-02 15:04:05+08:00")
-			startTime,_=time.Parse("2006-01-02 15:04:05+08:00", startTimestring)
-			endTimestring:=endTime.Format("2006-01-02 15:04:05+08:00")
-			endTime,_=time.Parse("2006-01-02 15:04:05+08:00", endTimestring)
+			startTimestring := startTime.Format("2006-01-02 15:04:05+08:00")
+			startTime, _ = time.Parse("2006-01-02 15:04:05+08:00", startTimestring)
+			endTimestring := endTime.Format("2006-01-02 15:04:05+08:00")
+			endTime, _ = time.Parse("2006-01-02 15:04:05+08:00", endTimestring)
 			//更新当前日期
 			nowDate = startTime.Format("2006-01-02T15:04:05Z")
 			//查询表里的所有数据
