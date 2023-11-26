@@ -21,10 +21,11 @@ type User struct {
 }
 
 type Todo struct {
-	ID     int       `json:"id"`
-	Info   string    `json:"info"`
-	Date   time.Time `json:"date"`
-	Status bool      `json:"status"`
+	ID       int       `json:"id"`
+	Info     string    `json:"info"`
+	Date     time.Time `json:"date"`
+	Status   bool      `json:"status"`
+	Username string    `json:"user"`
 }
 
 func initMySQL() (err error) {
@@ -40,7 +41,8 @@ func main() {
 
 	//获取当前时间
 	nowDate := time.Now().Format("2006-01-02T00:00:00Z")
-
+	//获取当前用户
+	var nowUser User
 	//连接数据库
 	err := initMySQL()
 	if err != nil {
@@ -67,7 +69,7 @@ func main() {
 	admin.Password = "admin"
 	DB.Create(&admin)
 	//创建用户
-	r.POST("/signup/check", func(c *gin.Context) {
+	r.POST("/user/signup", func(c *gin.Context) {
 		var user User
 		c.BindJSON(&user)
 		DB.Debug().Create(&user)
@@ -76,10 +78,11 @@ func main() {
 	r.POST("/user", func(c *gin.Context) {
 		var user User
 		c.BindJSON(&user)
-		result := DB.Debug().Find(&user,"`name`=? AND `password`=?", user.Name, user.Password)
+		result := DB.Debug().Where("`name`=? AND `password`=?", user.Name, user.Password).Find(&nowUser)
 		if result.RowsAffected == 0 {
 			// 登录失败
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials",
+				"user": user.Name})
 		} else {
 			c.JSON(http.StatusOK, gin.H{"success": "success"})
 		}
@@ -124,7 +127,7 @@ func main() {
 			nowDate = startTime.Format("2006-01-02T15:04:05Z")
 			//查询表里的所有数据
 			var todoList []Todo
-			if err = DB.Debug().Where("`date` BETWEEN ? AND ?", startTime, endTime).Find(&todoList).Error; err != nil {
+			if err = DB.Debug().Where("`date` BETWEEN ? AND ?", startTime, endTime).Where("`username` = ?", nowUser.Name).Find(&todoList).Error; err != nil {
 				c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 			} else {
 				c.JSON(http.StatusOK, todoList)
