@@ -22,6 +22,16 @@ type User struct {
 
 type Todo struct {
 	ID       int       `json:"id"`
+	Title    string    `json:"title`
+	Info     string    `json:"info"`
+	Date     time.Time `json:"date"`
+	Status   bool      `json:"status"`
+	Username string    `json:"user"`
+}
+
+type Day struct {
+	ID       int       `json:"id"`
+	Title    string    `json:"title`
 	Info     string    `json:"info"`
 	Date     time.Time `json:"date"`
 	Status   bool      `json:"status"`
@@ -52,6 +62,7 @@ func main() {
 	//模型绑定
 	DB.AutoMigrate(&Todo{})
 	DB.AutoMigrate(&User{})
+	DB.AutoMigrate(&Day{})
 
 	r := gin.Default()
 	r.Static("/assets", "assets")
@@ -178,5 +189,71 @@ func main() {
 		})
 	}
 
+	//纪念日的增加
+	r.POST("/edit/day", func(c *gin.Context) {
+		//前端页面填写待办事项，点击提交，发请求
+		//从请求中把数据拿出来
+		var day Day
+		c.BindJSON(&day)
+		//更新nowDate
+		nowDate = day.Date.Format("2006-01-02T15:04:05Z")
+
+		//去掉时间偏移
+		// todo.Date = todo.Date.Add(-8 * time.Hour)
+		//存入数据库//返回响应
+		err = DB.Debug().Create(&day).Error
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, day)
+		}
+
+	})
+	//纪念日的查找
+	r.GET("/edit/day/bydate/:date", func(c *gin.Context) {
+		//接收时间信息
+		selectedDate, _ := c.Params.Get("date")
+		startTime, _ := time.Parse("2006-01-02", selectedDate)
+		endTime, _ := time.Parse("2006-01-02", selectedDate)
+		endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 0, endTime.Location())
+		startTimestring := startTime.Format("2006-01-02 15:04:05+08:00")
+		startTime, _ = time.Parse("2006-01-02 15:04:05+08:00", startTimestring)
+		endTimestring := endTime.Format("2006-01-02 15:04:05+08:00")
+		endTime, _ = time.Parse("2006-01-02 15:04:05+08:00", endTimestring)
+		//更新当前日期
+		nowDate = startTime.Format("2006-01-02T15:04:05Z")
+		//查询表里的所有数据
+		var dayList []Day
+		if err = DB.Debug().Where("`date` BETWEEN ? AND ?", startTime, endTime).Where("`username` = ?", nowUser.Name).Find(&dayList).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, dayList)
+		}
+	})
+
+	//纪念日删除
+	r.DELETE("/edit/day/byid/:id", func(c *gin.Context) {
+		id, ok := c.Params.Get("id")
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{"error": "无效id"})
+			return
+		}
+		if err = DB.Where("`id`=?", id).Delete(Day{}).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, gin.H{id: "deleted success！"})
+		}
+	})
+	//搜索日程
+	r.GET("/search/todo/:keyword", func(c *gin.Context) {
+		search, _ := c.Params.Get("keyword")
+		search = search + "%"
+		var todos []Todo
+		if err = DB.Debug().Where("`title` like ?", search).Where("`username` = ?", nowUser.Name).Find(&todos).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, todos)
+		}
+	})
 	r.Run()
 }
