@@ -89,7 +89,8 @@ func main() {
 	r.POST("/user", func(c *gin.Context) {
 		var user User
 		c.BindJSON(&user)
-		result := DB.Debug().Where("`name`=? AND `password`=?", user.Name, user.Password).Find(&nowUser)
+		// result := DB.Debug().Where("`name`=? AND `password`=?", user.Name, user.Password).Find(&nowUser)
+		result := DB.Debug().Select("name, password").Where("`name`=? AND `password`=?", user.Name, user.Password).First(&nowUser)
 		if result.RowsAffected == 0 {
 			// 登录失败
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials",
@@ -165,7 +166,7 @@ func main() {
 				return
 			}
 			c.BindJSON(&todo)
-			todo.Status = !todo.Status
+			// todo.Status = !todo.Status
 			DB.Model(&Todo{}).Where("`id`=?", id).Update("`status`", &todo.Status)
 			if err = DB.Save(&todo).Error; err != nil {
 				c.JSON(http.StatusOK, gin.H{"error": err.Error()})
@@ -230,7 +231,27 @@ func main() {
 			c.JSON(http.StatusOK, dayList)
 		}
 	})
+	//纪念日修改
+	r.PUT("/edit/day/byid/:id", func(c *gin.Context) {
+		id, ok := c.Params.Get("id")
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{"error": "无效id"})
+			return
+		}
+		var day Day
+		if err = DB.Where("`id`=?", id).First(&day).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+			return
+		}
+		c.BindJSON(&day)
+		// DB.Model(&Day{}).Where("`id`=?", id).Update(&day)
+		if err = DB.Save(&day).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, day)
+		}
 
+	})
 	//纪念日删除
 	r.DELETE("/edit/day/byid/:id", func(c *gin.Context) {
 		id, ok := c.Params.Get("id")
