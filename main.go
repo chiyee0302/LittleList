@@ -34,7 +34,6 @@ type Day struct {
 	Title    string    `json:"title`
 	Info     string    `json:"info"`
 	Date     time.Time `json:"date"`
-	Status   bool      `json:"status"`
 	Username string    `json:"user"`
 }
 
@@ -274,6 +273,17 @@ func main() {
 			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 		} else {
 			c.JSON(http.StatusOK, todos)
+		}
+	})
+	//搜索纪念日
+	r.GET("/search/day/:keyword", func(c *gin.Context) {
+		search, _ := c.Params.Get("keyword")
+		search = search + "%"
+		var days []Day
+		if err = DB.Debug().Where("`title` like ?", search).Where("`username` = ?", nowUser.Name).Find(&days).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusOK, days)
 		}
 	})
 	r.Run()
